@@ -1,31 +1,16 @@
-struct ChipEight {
-    memory: [u8; 4096],
-}
+mod common;
+mod chip_eight_core;
 
-impl ChipEight {
-    fn new() -> ChipEight {
-        ChipEight {
-            memory: [0; 4096],
-        }
-    }
-}
-
-impl Default for ChipEight {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl ChipEight {
-    fn load(&mut self, program: &[u8]) {
-        for (i, byte) in program.iter().enumerate() {
-            self.memory[i + 0x200] = *byte;
-        }
-    }
-}
+use chip_eight_core::chip_eight::ChipEight;
+use common::file_utils::read_in_rom;
 
 
 fn main() {
-    ChipEight chip_eight = ChipEight::new();
-    println!("Hello, world!");
+    let rom: Vec<u8> =
+        read_in_rom("/Users/christophercimponeriu/repos/chip8-test-suite/bin/1-chip8-logo.ch8")
+            .expect("rom failed to load from file system.");
+
+    let mut chip_eight: ChipEight = ChipEight::new();
+    chip_eight.load(&rom);
+    // chip_eight.cycle();
 }
