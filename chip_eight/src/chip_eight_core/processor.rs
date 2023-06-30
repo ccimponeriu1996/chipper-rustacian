@@ -75,7 +75,7 @@ impl Processor {
         let opcode_data: u16 = self.dehydrate_opcode();
     }
     // TODO: dehydrate the mains, nnn, xkk, and xy0..9. Also, come up with better names if possible.
-    fn dehydrate_large_number() {
+    fn dehydrate_large_number(self) -> u16 {
         return self.dehydrate_opcode();
     }
     fn dehydrate_register_and_value() {
