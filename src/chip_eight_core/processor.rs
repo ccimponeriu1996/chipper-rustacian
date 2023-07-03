@@ -42,8 +42,19 @@ impl Processor {
     pub fn get_register_value(&mut self, register_index: usize) -> u8 {
         return self.registers[register_index];
     }
+    pub fn get_values_upto_register(&mut self, register_index: usize) -> Vec<u8> {
+        return self.registers[0..=register_index].to_vec();
+    }
+    pub fn set_values_upto_register(&mut self, bytes: Vec<u8>) -> () {
+        for (i, byte) in bytes.iter().enumerate() {
+            self.registers[i] = *byte;
+        }
+    }
     pub fn set_register_value(&mut self, register_index: usize, value: u8) -> () {
         self.registers[register_index] = value;
+    }
+    pub fn set_index_register(&mut self, value: u16) -> () {
+        self.index_register = value;
     }
     pub fn get_opcode_register_values(&mut self) -> (usize, usize) {
         return self.dehydrate_registers();
@@ -120,6 +131,9 @@ impl Processor {
 
         self.registers[F_REGISTER_POINTER] = if sum > 0x00FF {1} else {0};
         self.registers[x_register] = sum as u8;
+    }
+    pub fn add_register_to_i(&mut self, register_index: usize) {
+        self.index_register += self.registers[register_index] as u16;
     }
     pub fn sub_registers(&mut self) {
         let (x_register, y_register) = self.dehydrate_registers();

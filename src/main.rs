@@ -12,5 +12,5 @@ fn main() {
 
     let mut chip_eight: ChipEight = ChipEight::new();
     chip_eight.load(&rom);
-    // chip_eight.cycle();
+    chip_eight.cycle();
 }

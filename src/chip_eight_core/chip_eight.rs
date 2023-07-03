@@ -100,7 +100,33 @@ impl ChipEight {
                 let register_value: u8 = self.processor.get_register_value(register_index);
                 self.sound.set_sound_timer(register_value);
             }
-            _ => todo!(),
+            0x001E => self.processor.add_register_to_i(register_index),
+            0x0029 => {
+                let register_value: u8 = self.processor.get_register_value(register_index);
+                let hex_location: u8 = self.memory.get_hex_sprite_index(register_value);
+                self.processor.set_index_register(hex_location as u16);
+            }
+            0x0033 => {
+                let register_value: u8 = self.processor.get_register_value(register_index);
+                let starting_index: usize = self.processor.get_index_register_value() as usize;
+                let bcd: [u8; 3] = [
+                    register_value / 100, // Mod not required, u8 cannot go past 255
+                    register_value / 10 % 10,
+                    register_value % 10, // Div not required, only need ones place
+                ];
+                self.memory.set_bytes(starting_index, bcd.to_vec());
+            }
+            0x0055 => {
+                let bytes: Vec<u8> = self.processor.get_values_upto_register(register_index);
+                let starting_index: usize = self.processor.get_index_register_value() as usize;
+                self.memory.set_bytes(starting_index, bytes);
+            }
+            0x0065 => {
+                let starting_index: u16 = self.processor.get_index_register_value();
+                let bytes: Vec<u8> = self.memory.get_bytes(starting_index, register_index as u8);
+                self.processor.set_values_upto_register(bytes);
+            }
+            _ => panic!(),
         }
     }
     pub fn load(&mut self, program: &Vec<u8>) {
