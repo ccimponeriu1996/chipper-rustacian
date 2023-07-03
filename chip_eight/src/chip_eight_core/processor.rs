@@ -13,6 +13,8 @@ pub struct Processor {
     delay_timer: u8,
 }
 
+const F_REGISTER_POINTER: usize = 0xF;
+
 impl Processor {
     pub fn new() -> Processor {
         Processor {
@@ -31,6 +33,25 @@ impl Processor {
     pub fn set_opcode(&mut self, opcode: u16) {
         self.opcode = opcode;
     }
+    pub fn skip_instruction(&mut self) {
+        // Hypothetically adding two to the pc is supposed to skip the instruction but god knows.
+        self.program_counter += 2;
+    }
+    pub fn get_index_register_value(&mut self) -> u16 {
+        return self.index_register;
+    }
+    pub fn get_register_value(&mut self, register_index: u8) -> u8 {
+        return self.registers[register_index];
+    }
+    pub fn get_opcode_register_values(&mut self) -> (usize, usize) {
+        return self.dehydrate_registers();
+    }
+    pub fn get_opcode_nibble(&mut self) -> u8 {
+        return 0x000F & self.opcode as u8;
+    }
+    pub fn set_delay_timer_to_register(&mut self, register_index: u8) -> () {
+        self.delay_timer = self.registers[register_index];
+    }
     pub fn subroutine_return(&mut self) {
         // Set the PC to the address at the top of the stack and decrement stack by one.
         self.program_counter = self.stack[self.stack_pointer];
@@ -40,6 +61,14 @@ impl Processor {
         // Jump to the address of the last 12 bits of the opcode
         self.program_counter = self.dehydrate_opcode();
     }
+    pub fn jump_plus_v0(&mut self) {
+        // Jump to the address of the last 12 bits of the opcode
+        self.program_counter = self.dehydrate_opcode() + self.registers[0] as u16;
+    }
+    pub fn assign_random(&mut self) {
+        let (register_pointer, value) = self.dehydrate_register_and_value();
+        self.registers[register_pointer] = value & hex_utils::random_byte();
+    }
     pub fn call(&mut self) {
         // Store current address in the PC to the top of the stack and set the PC to the new addr
         self.stack_pointer += 1;
@@ -48,47 +77,113 @@ impl Processor {
     }
     // TODO: refactor these skip ifs into something magical if possible
     pub fn skip_on_equal(&mut self) {
-        let opcode_data: u16 = self.dehydrate_opcode();
-        let register_pointer: usize = hex_utils::right_shift(opcode_data, 2) as usize;
-        let comparitor: u8 = hex_utils::left_pad(opcode_data, 2) as u8;
-        if self.registers[register_pointer] == comparitor {
+        let (register_pointer, value) = self.dehydrate_register_and_value();
+        if self.registers[register_pointer] == value {
             self.skip_instruction();
         }
     }
     pub fn skip_on_not_equal(&mut self) {
-        let opcode_data: u16 = self.dehydrate_opcode();
-        let register_pointer: usize = hex_utils::right_shift(opcode_data, 2) as usize;
-        let comparitor: u8 = hex_utils::left_pad(opcode_data, 2) as u8;
-        if self.registers[register_pointer] != comparitor {
-            self.skip_instruction();
-        }
-    }
-    pub fn skip_if_registers(&mut self) {
-        let opcode_data: u16 = self.dehydrate_opcode();
-        let left_register_pointer: usize = hex_utils::right_shift(opcode_data, 3) as usize;
-        let right_register_pointer: usize = hex_utils::right_shift(opcode_data, 2) as usize;
-        if self.registers[left_register_pointer] == self.registers[right_register_pointer] {
+        let (register_pointer, value) = self.dehydrate_register_and_value();
+        if self.registers[register_pointer] != value {
             self.skip_instruction();
         }
     }
     pub fn load_into_register(&mut self) {
-        let opcode_data: u16 = self.dehydrate_opcode();
+        let (register_pointer, value) = self.dehydrate_register_and_value();
+        self.registers[register_pointer] = value;
     }
-    // TODO: dehydrate the mains, nnn, xkk, and xy0..9. Also, come up with better names if possible.
-    fn dehydrate_large_number(self) -> u16 {
-        return self.dehydrate_opcode();
+    pub fn copy_register(&mut self) {
+        let (x_register, y_register) = self.dehydrate_registers();
+        self.registers[x_register] = self.registers[y_register];
     }
-    fn dehydrate_register_and_value() {
+    pub fn or_registers(&mut self) {
+        let (x_register, y_register) = self.dehydrate_registers();
+        self.registers[x_register] |= self.registers[y_register];
+    }
+    pub fn and_registers(&mut self) {
+        let (x_register, y_register) = self.dehydrate_registers();
+        self.registers[x_register] &= self.registers[y_register];
+    }
+    pub fn xor_registers(&mut self) {
+        let (x_register, y_register) = self.dehydrate_registers();
+        self.registers[x_register] ^= self.registers[y_register];
+    }
+    pub fn add_registers(&mut self) {
+        let (x_register, y_register) = self.dehydrate_registers();
+        let sum: u16 = self.registers[x_register] as u16
+            + self.registers[y_register] as u16;
 
+        self.registers[F_REGISTER_POINTER] = if sum > 0x00FF {1} else {0};
+        self.registers[x_register] = sum as u8;
     }
-    // TODO: look into definition of hydration and dehydration in software
+    pub fn sub_registers(&mut self) {
+        let (x_register, y_register) = self.dehydrate_registers();
+        self.registers[F_REGISTER_POINTER] = 
+            if self.registers[x_register] < self.registers[y_register]
+                {1} else {0};
+
+        self.registers[x_register] -= self.registers[y_register];
+    }
+    pub fn sub_reverse_registers(&mut self) {
+        let (x_register, y_register) = self.dehydrate_registers();
+        self.registers[F_REGISTER_POINTER] = 
+            if self.registers[x_register] > self.registers[y_register]
+                {1} else {0};
+
+        self.registers[x_register] = self.registers[y_register] -
+            self.registers[x_register];
+    }
+    pub fn div_by_two(&mut self) {
+        let (x_register, _y_register) = self.dehydrate_registers();
+        self.registers[F_REGISTER_POINTER] = if 0b00000001 & self.registers[x_register] == 0x01
+            {1} else {0};
+
+        self.registers[x_register] /= 2;
+    }
+    pub fn multiply_by_two(&mut self) {
+        let (x_register, _y_register) = self.dehydrate_registers();
+        self.registers[F_REGISTER_POINTER] = if 0b10000000 & self.registers[x_register] == 0xF0
+            {1} else {0};
+
+        self.registers[x_register] *= 2;
+    }
+    pub fn load_into_index_register(&mut self) {
+        self.index_register = self.dehydrate_opcode();
+    }
+    pub fn add_to_register(&mut self) {
+        let (register_pointer, value) = self.dehydrate_register_and_value();
+        self.registers[register_pointer] += value;
+    }
+    pub fn skip_if_registers(&mut self) {
+        let (x_register, y_register) = self.dehydrate_registers();
+        if self.registers[x_register] == self.registers[y_register] {
+            self.skip_instruction();
+        }
+    }
+    pub fn skip_if_not_regsiters(&mut self) {
+        let (x_register, y_register) = self.dehydrate_registers();
+        if self.registers[x_register] != self.registers[y_register] {
+            self.skip_instruction();
+        }
+    }
+    // Dehydration BEGIN
+    // TODO: dehydrate the mains, nnn, xkk, and xy0..9. Also, come up with better names if possible.
     fn dehydrate_opcode(&mut self) -> u16 {
         return hex_utils::left_pad(self.opcode, 1);
     }
-    fn skip_instruction(&mut self) {
-        // Hypothetically adding two to the pc is supposed to skip the instruction but god knows.
-        self.program_counter += 2;
+    fn dehydrate_register_and_value(&mut self) -> (usize, u8) {
+        let opcode_data: u16 = self.dehydrate_opcode();
+        let register_pointer: usize = hex_utils::right_shift(opcode_data, 2) as usize;
+        let value: u8 = hex_utils::left_pad(opcode_data, 2) as u8;
+        return (register_pointer, value);
     }
+    fn dehydrate_registers(&mut self) -> (usize, usize) {
+        let opcode_data: u16 = self.dehydrate_opcode();
+        let x_register: usize = hex_utils::right_shift(opcode_data, 3) as usize;
+        let y_register: usize = hex_utils::right_shift(opcode_data, 2) as usize;
+        return (x_register, y_register);
+    }
+    // Dehydration END
 }
 
 impl Tick for Processor {

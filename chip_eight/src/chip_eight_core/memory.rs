@@ -1,14 +1,12 @@
-use super::api::Tick;
-
 // Memory
-const MEMORY_SIZE: usize = 4096;
+const MEMORY_SIZE: u16 = 0x1000;
 
-const MEMORY_START: usize = 0x000;
-const MEMORY_END: usize = 0x1FF;
-const FONT_START: usize = 0x050;
-const FONT_END: usize = 0x0A0;
-const PROGRAM_START: usize = 0x200;
-const PROGRAM_END: usize = 0xFFF;
+const MEMORY_START: u16 = 0x000;
+const MEMORY_END: u16 = 0x1FF;
+const FONT_START: u16 = 0x050;
+const FONT_END: u16 = 0x0A0;
+const PROGRAM_START: u16 = 0x200;
+const PROGRAM_END: u16 = 0xFFF;
 
 pub struct Memory {
     memory: [u8; MEMORY_SIZE]
@@ -27,16 +25,11 @@ impl Memory {
             print!("{}:{}, ", PROGRAM_START + i, byte);
         }
     }
-    pub fn read(&mut self, location: usize) -> u8 {
-        return self.memory[location];
+    pub fn get_bytes(&mut self, starting_index: u16, number_of_bytes: u8) -> [u8] {
+        let ending_index = starting_index + number_of_bytes as u16;
+        return self.memory[starting_index..ending_index]
     }
-    pub fn write(&mut self, location: usize, byte: u8) -> () {
+    pub fn write(&mut self, location: u16, byte: u8) -> () {
         self.memory[location] = byte
-    }
-}
-
-impl Tick for Memory {
-    fn tick(&mut self) -> () {
-        return
     }
 }

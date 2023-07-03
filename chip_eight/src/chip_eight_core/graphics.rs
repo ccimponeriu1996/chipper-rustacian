@@ -14,4 +14,7 @@ impl Graphics {
     pub fn clear(&mut self) {
         self.pixels = [0; PIXELS];
     }
+    pub fn draw(&mut self, bytes: [u8], x_coordinate: u16, y_coordinate: u16) {
+        println!("{}, {}, {}", bytes, x_coordinate, y_coordinate);
+    }
 }
