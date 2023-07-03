@@ -1,7 +1,7 @@
 use crate::chip_eight_core::api::Tick;
 
 pub struct Sound {
-    sound_timer: u16,
+    sound_timer: u8,
 }
 
 impl Sound {
@@ -9,6 +9,9 @@ impl Sound {
         Sound {
             sound_timer: 0,
         }
+    }
+    pub fn set_sound_timer(&mut self, time: u8) {
+        self.sound_timer = time;
     }
 }
 

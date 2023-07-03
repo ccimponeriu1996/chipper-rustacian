@@ -34,14 +34,16 @@ impl Processor {
         self.opcode = opcode;
     }
     pub fn skip_instruction(&mut self) {
-        // Hypothetically adding two to the pc is supposed to skip the instruction but god knows.
         self.program_counter += 2;
     }
     pub fn get_index_register_value(&mut self) -> u16 {
         return self.index_register;
     }
-    pub fn get_register_value(&mut self, register_index: u8) -> u8 {
+    pub fn get_register_value(&mut self, register_index: usize) -> u8 {
         return self.registers[register_index];
+    }
+    pub fn set_register_value(&mut self, register_index: usize, value: u8) -> () {
+        self.registers[register_index] = value;
     }
     pub fn get_opcode_register_values(&mut self) -> (usize, usize) {
         return self.dehydrate_registers();
@@ -49,7 +51,10 @@ impl Processor {
     pub fn get_opcode_nibble(&mut self) -> u8 {
         return 0x000F & self.opcode as u8;
     }
-    pub fn set_delay_timer_to_register(&mut self, register_index: u8) -> () {
+    pub fn set_delay_timer_to_register(&mut self, register_index: usize) -> () {
+        self.registers[register_index] = self.delay_timer;
+    }
+    pub fn set_delay_timer(&mut self, register_index: usize) -> () {
         self.delay_timer = self.registers[register_index];
     }
     pub fn subroutine_return(&mut self) {

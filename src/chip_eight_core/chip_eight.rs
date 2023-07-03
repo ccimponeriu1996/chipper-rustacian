@@ -2,7 +2,7 @@ use super::memory::Memory;
 use super::graphics::Graphics;
 use super::sound::Sound;
 use super::processor::Processor;
-use super::keypad::Keypad;
+use super::keypad::{Keypad, Position};
 use super::api::Tick;
 
 use crate::common::hex_utils;
@@ -14,6 +14,8 @@ pub struct ChipEight {
     graphics: Graphics,
     processor: Processor,
     keypad: Keypad,
+    waiting: bool,
+    key_register: usize,
 }
 
 // TODO: If i could go back in time i would call this the bus
@@ -25,6 +27,8 @@ impl ChipEight {
             graphics: Graphics::new(),
             processor: Processor::new(),
             keypad: Keypad::new(),
+            waiting: false,
+            key_register: 0,
         }
     }
     // Maybe this should go in the chip_eight.rs file instead.
@@ -51,7 +55,7 @@ impl ChipEight {
                 let (x_coordinate, y_coordinate) = self.processor.get_opcode_register_values();
 
                 let number_of_bytes: u8 = self.processor.get_opcode_nibble();
-                let bytes: [u8] = self.memory.get_bytes(starting_index, number_of_bytes);
+                let bytes: Vec<u8> = self.memory.get_bytes(starting_index, number_of_bytes);
                 self.graphics.draw(bytes, x_coordinate, y_coordinate);
             }
             0xE000..=0xEFFF => self.parse_keyboard_operation(opcode),
@@ -79,24 +83,34 @@ impl ChipEight {
             panic!("Invalid subopcode for keyboard operation");
         }
 
-        let register_index: u8 = hex_utils::right_shift(opcode & 0x0F00, 2) as u8;
+        let register_index: usize = hex_utils::right_shift(opcode & 0x0F00, 2) as usize;
         let key = self.processor.get_register_value(register_index);
-        if (subopcode == 0x009E && self.keypad.get_key(key) == Keypad::Position::DOWN) ||
-                (subopcode == 0x00A1 &&self.keypad.get_key(key) == Keypad::Position::UP) {
+        if (subopcode == 0x009E && self.keypad.get_key(key) == Position::DOWN) ||
+                (subopcode == 0x00A1 &&self.keypad.get_key(key) == Position::UP) {
             self.processor.skip_instruction();
         }
     }
     fn parse_util_function(&mut self, subopcode: u16) -> () {
+        let register_index: usize = hex_utils::right_shift(subopcode & 0x0F00, 2) as usize;
         match subopcode & 0x00FF {
-            0x0007 => self.processor.set_delay_timer_to_register(),
-            0x000A => (),
-            0x0015 => (),
-            0x0018 => (),
+            0x0007 => self.processor.set_delay_timer_to_register(register_index),
+            0x000A => self.wait(register_index),
+            0x0015 => self.processor.set_delay_timer(register_index),
+            0x0018 => {
+                let register_value: u8 = self.processor.get_register_value(register_index);
+                self.sound.set_sound_timer(register_value);
+            }
             _ => todo!(),
         }
     }
     pub fn load(&mut self, program: &Vec<u8>) {
         self.memory.load(program);
+    }
+    pub fn wait(&mut self, register_index: usize) {
+        self.key_register = register_index;
+    }
+    pub fn end_wait(&mut self, key: u8) {
+        self.processor.set_register_value(self.key_register, key);
     }
     pub fn cycle(mut self) {
         self.processor.tick();
