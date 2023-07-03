@@ -2,7 +2,7 @@ pub struct Keypad {
     keys: [u8; 16],
 }
 
-enum Position { UP, DOWN };
+pub enum Position { UP, DOWN };
 
 impl Keypad {
     pub fn new() -> Keypad {
