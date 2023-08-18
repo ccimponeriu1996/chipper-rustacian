@@ -1,20 +1,33 @@
 // Graphics
 const PIXELS: usize = 64 * 32;
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum PixelState { ON, OFF }
+
 pub struct Graphics {
-    pixels: [u8; PIXELS]
+    display: [PixelState; PIXELS]
 }
 
 impl Graphics {
     pub fn new() -> Graphics {
         Graphics {
-            pixels: [0; PIXELS]
+            display: [PixelState::ON; PIXELS]
         }
     }
     pub fn clear(&mut self) {
-        self.pixels = [0; PIXELS];
+        self.display = [PixelState::OFF; PIXELS];
     }
-    pub fn draw(&mut self, bytes: Vec<u8>, x_coordinate: usize, y_coordinate: usize) {
+    pub fn draw(&mut self, bytes: Vec<u8>, x_coordinate: usize, y_coordinate: usize) -> bool {
+        let pixels_erased: bool = false;
+        for (i, byte) in bytes.iter().enumerate() {
+            self.display[x_coordinate + (y_coordinate * 64)] = PixelState::ON; //  XOR
+        }
         println!("{:?}, {}, {}", bytes, x_coordinate, y_coordinate);
+        for (i, pixel) in self.display.iter().enumerate() {
+            print!("{}", if *pixel == PixelState::ON {"◒"} else {" "});
+            if i % 64 == 0 { println!(); }
+        }
+        println!("\n\n");
+        return pixels_erased;
     }
 }
